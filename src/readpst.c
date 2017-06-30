@@ -66,7 +66,7 @@ void      write_journal(FILE* f_output, pst_item* item);
 void      write_appointment(FILE* f_output, pst_item *item);
 void      create_enter_dir(struct file_ll* f, pst_item *item);
 void      close_enter_dir(struct file_ll *f);
-char*     escape_quotes(char *inp);
+char*     quote_string(char *inp);
 
 const char*  prog_name;
 char*  output_dir = ".";
@@ -1153,14 +1153,15 @@ void write_embedded_message(FILE* f_output, pst_item_attach* attach, char *bound
 }
 
 /**
- * Backslash-escape quotes in the given string.
+ * Backslash-escape quotes and backslashes in the given string.
  */
-char *escape_quotes(char *inp) {
+char *quote_string(char *inp) {
     int i = 0;
     int count = 0;
     char *curr = inp;
     while (*curr) {
-        if (*curr++ == '\"') {
+        *curr++;
+        if (*curr == '\"' || *curr == '\\') {
             count++;
         }
         i++;
@@ -1169,7 +1170,7 @@ char *escape_quotes(char *inp) {
     char *curr_in = inp;
     char *curr_out = res;
     while (*curr_in) {
-        if (*curr_in == '\"') {
+        if (*curr_in == '\"' || *curr_in == '\\') {
             *curr_out++ = '\\';
         }
         *curr_out++ = *curr_in++;
@@ -1208,7 +1209,7 @@ void write_inline_attachment(FILE* f_output, pst_item_attach* attach, char *boun
     if (attach->filename2.str) {
         // use the long filename, converted to proper encoding if needed.
         // it is already utf8
-        char *escaped = escape_quotes(attach->filename2.str);
+        char *escaped = quote_string(attach->filename2.str);
         pst_rfc2231(&attach->filename2);
         fprintf(f_output, "Content-Disposition: attachment; \n        filename*=%s;\n", attach->filename2.str);
         // Also include the (escaped) utf8 filename in the 'filename' header directly - this is not strictly valid
