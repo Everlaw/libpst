@@ -1049,8 +1049,6 @@ static int pst_build_id_ptr(pst_file *pf, int64_t offset, int32_t depth, uint64_
     if (pf->do_read64 == 2) {
         item_count = read_twobyte(buf, ITEM_COUNT_OFFSET);
         count_max = read_twobyte(buf, MAX_COUNT_OFFSET);
-        LE16_CPU(item_count);
-        LE16_CPU(count_max);
     } else {
         item_count = (int32_t)(unsigned)(buf[ITEM_COUNT_OFFSET]);
         count_max = (int32_t)(unsigned)(buf[MAX_COUNT_OFFSET]);
@@ -1161,8 +1159,6 @@ static int pst_build_desc_ptr (pst_file *pf, int64_t offset, int32_t depth, uint
     if (pf->do_read64 == 2) {
         item_count = read_twobyte(buf, ITEM_COUNT_OFFSET);
         count_max = read_twobyte(buf, MAX_COUNT_OFFSET);
-        LE16_CPU(item_count);
-        LE16_CPU(count_max);
     } else {
         item_count = (int32_t)(unsigned)(buf[ITEM_COUNT_OFFSET]);
         count_max = (int32_t)(unsigned)(buf[MAX_COUNT_OFFSET]);
