@@ -1549,8 +1549,8 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
     time_t em_time;
     char *c_time;
     char *headers = NULL;
-    int has_from, has_subject, has_to, has_cc, has_date, has_msgid;
-    has_from = has_subject = has_to = has_cc = has_date = has_msgid = 0;
+    int has_from, has_subject, has_to, has_cc, has_date, has_msgid, has_delivery_date;
+    has_from = has_subject = has_to = has_cc = has_date = has_msgid = has_delivery_date = 0;
     DEBUG_ENT("write_normal_email");
 
     pst_convert_utf8_null(item, &item->email->header);
@@ -1614,6 +1614,7 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
         header_has_field(headers, "\nDate:",        &has_date);
         header_has_field(headers, "\nCC:",          &has_cc);
         header_has_field(headers, "\nMessage-Id:",  &has_msgid);
+        header_has_field(headers, "\nDelivery-Date:",  &has_delivery_date);
 
         // look for charset and report-type in Content-Type header
         t = header_get_field(headers, "\nContent-Type:");
@@ -1727,6 +1728,15 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
         gmtime_r(&em_time, &stm);
         strftime(c_time, C_TIME_SIZE, "%a, %d %b %Y %H:%M:%S %z", &stm);
         fprintf(f_output, "Date: %s\n", c_time);
+    }
+
+    if (!has_delivery_date && item->email->arrival_date) {
+        char c_time[C_TIME_SIZE];
+        struct tm stm;
+        time_t arr_time = pst_fileTimeToUnixTime(item->email->arrival_date);
+        gmtime_r(&arr_time, &stm);
+        strftime(c_time, C_TIME_SIZE, "%a, %d %b %Y %H:%M:%S %z", &stm);
+        fprintf(f_output, "Delivery-Date: %s\n", c_time);
     }
 
     if (!has_msgid && item->email->messageid.str) {
