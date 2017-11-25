@@ -2540,6 +2540,9 @@ static int pst_process(uint64_t block_id, pst_mapi_object *list, pst_item *item,
                 case 0x1035: // Message ID
                     LIST_COPY_EMAIL_STR("Message ID", item->email->messageid);
                     break;
+                case 0x1039: // References
+                    LIST_COPY_EMAIL_STR("References", item->email->references);
+                    break;
                 case 0x1042: // in-reply-to
                     LIST_COPY_EMAIL_STR("In-Reply-To", item->email->in_reply_to);
                     break;
@@ -3389,6 +3392,7 @@ void pst_freeItem(pst_item *item) {
             SAFE_FREE_STR(item->email->header);
             SAFE_FREE_STR(item->email->htmlbody);
             SAFE_FREE_STR(item->email->in_reply_to);
+            SAFE_FREE_STR(item->email->references);
             SAFE_FREE_STR(item->email->messageid);
             SAFE_FREE_STR(item->email->original_bcc);
             SAFE_FREE_STR(item->email->original_cc);
