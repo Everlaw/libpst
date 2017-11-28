@@ -194,6 +194,7 @@ typedef struct pst_item_email {
     int32_t     importance;
     /** mapi element 0x1042 */
     pst_string  in_reply_to;
+    pst_string  references;
     /** mapi element 0x0058 PR_MESSAGE_CC_ME, this user is listed explicitly in the CC address
      *  @li 1 true
      *  @li 0 false */

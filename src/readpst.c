@@ -1549,8 +1549,8 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
     time_t em_time;
     char *c_time;
     char *headers = NULL;
-    int has_from, has_subject, has_to, has_cc, has_date, has_msgid, has_delivery_date;
-    has_from = has_subject = has_to = has_cc = has_date = has_msgid = has_delivery_date = 0;
+    int has_from, has_subject, has_to, has_cc, has_date, has_msgid, has_delivery_date, has_irt, has_ref;
+    has_from = has_subject = has_to = has_cc = has_date = has_msgid = has_delivery_date = has_irt = has_ref = 0;
     DEBUG_ENT("write_normal_email");
 
     pst_convert_utf8_null(item, &item->email->header);
@@ -1614,6 +1614,8 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
         header_has_field(headers, "\nDate:",        &has_date);
         header_has_field(headers, "\nCC:",          &has_cc);
         header_has_field(headers, "\nMessage-Id:",  &has_msgid);
+        header_has_field(headers, "\nIn-Reply-To:",  &has_irt);
+        header_has_field(headers, "\nReferences:",  &has_ref);
         header_has_field(headers, "\nDelivery-Date:",  &has_delivery_date);
 
         // look for charset and report-type in Content-Type header
@@ -1743,6 +1745,17 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
         pst_convert_utf8(item, &item->email->messageid);
         fprintf(f_output, "Message-Id: %s\n", item->email->messageid.str);
     }
+
+    if (!has_irt && item->email->in_reply_to.str) {
+        pst_convert_utf8(item, &item->email->in_reply_to);
+        fprintf(f_output, "In-Reply-To: %s\n", item->email->in_reply_to.str);
+    }
+
+    if (!has_ref && item->email->references.str) {
+        pst_convert_utf8(item, &item->email->references);
+        fprintf(f_output, "References: %s\n", item->email->references.str);
+    }
+
 
     // add forensic headers to capture some .pst stuff that is not really
     // needed or used by mail clients
