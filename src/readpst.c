@@ -1264,6 +1264,7 @@ int  valid_headers(char *header)
         if (header_match(header, "X-ASG-Debug-ID: "               )) return 1;
         if (header_match(header, "X-Barracuda-URL: "              )) return 1;
         if (header_match(header, "X-x: "                          )) return 1;
+        if (header_match(header, "User-Agent: "                   )) return 1;
         if (strlen(header) > 2) {
             DEBUG_INFO(("Ignore bogus headers = %s\n", header));
         }
