@@ -25,6 +25,7 @@
 
 #define PST_TYPE_NOTE        1
 #define PST_TYPE_SCHEDULE    2
+#define PST_TYPE_DOCUMENT    3
 #define PST_TYPE_APPOINTMENT 8
 #define PST_TYPE_CONTACT     9
 #define PST_TYPE_JOURNAL    10
@@ -797,6 +798,7 @@ typedef struct pst_item {
     /** derived from mapi elements 0x001a PR_MESSAGE_CLASS or 0x3613 PR_CONTAINER_CLASS
      *  @li  1 PST_TYPE_NOTE
      *  @li  2 PST_TYPE_SCHEDULE
+     *  @li  3 PST_TYPE_DOCUMENT
      *  @li  8 PST_TYPE_APPOINTMENT
      *  @li  9 PST_TYPE_CONTACT
      *  @li 10 PST_TYPE_JOURNAL
