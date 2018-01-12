@@ -395,7 +395,22 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
             // there should only be one message_store, and we have already done it
             ff.skip_count++;
             DEBUG_WARN(("item with message store content, type %i %s, skipping it\n", item->type, item->ascii_type));
-
+        } else if (item->attach && item->type == PST_TYPE_DOCUMENT) {
+            // This always outputs documents as separate files (ignoring the MODE_ setting).
+            // We could potentially write these docs as mbox entries in case of mbox output, but for us this is sufficient.
+            pst_item_attach* attach;
+            int attach_num = 0;
+            for (attach = item->attach; attach; attach = attach->next) {
+                pst_convert_utf8_null(item, &attach->filename1);
+                pst_convert_utf8_null(item, &attach->filename2);
+                pst_convert_utf8_null(item, &attach->mimetype);
+                DEBUG_INFO(("Attempting document extraction\n"));
+                if ((attach->data.data || attach->i_id) && acceptable_ext(attach)) {
+                    ff.item_count++;
+                    mk_separate_file(&ff, PST_TYPE_DOCUMENT, "", 0);
+                    write_separate_attachment(ff.name[PST_TYPE_DOCUMENT], attach, ++attach_num, &pstfile);
+                }
+            }
         } else {
             ff.skip_count++;
             DEBUG_WARN(("Unknown item type %i (%s) name (%s)\n",
@@ -816,6 +831,9 @@ char *item_type_to_name(int32_t item_type) {
         case PST_TYPE_JOURNAL:
             name = "journal";
             break;
+        case PST_TYPE_DOCUMENT:
+            name = "document";
+            break;
         case PST_TYPE_STICKYNOTE:
         case PST_TYPE_TASK:
         case PST_TYPE_NOTE:
@@ -835,6 +853,7 @@ int32_t reduced_item_type(int32_t item_type) {
         case PST_TYPE_APPOINTMENT:
         case PST_TYPE_CONTACT:
         case PST_TYPE_JOURNAL:
+        case PST_TYPE_DOCUMENT:
             reduced = item_type;
             break;
         case PST_TYPE_STICKYNOTE:

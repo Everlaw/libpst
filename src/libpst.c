@@ -2276,6 +2276,8 @@ static int pst_process(uint64_t block_id, pst_mapi_object *list, pst_item *item,
                             item->type = PST_TYPE_CONTACT;
                         else if (pst_strincmp("REPORT.IPM.Note", item->ascii_type, 15) == 0)
                             item->type = PST_TYPE_REPORT;
+                        else if (pst_strincmp("REPORT.IPM.Schedule.Meeting", item->ascii_type, 27) == 0)
+                            item->type = PST_TYPE_REPORT;
                         else if (pst_strincmp("IPM.Activity", item->ascii_type, 12) == 0)
                             item->type = PST_TYPE_JOURNAL;
                         else if (pst_strincmp("IPM.Appointment", item->ascii_type, 15) == 0)
@@ -2286,6 +2288,8 @@ static int pst_process(uint64_t block_id, pst_mapi_object *list, pst_item *item,
                             item->type = PST_TYPE_STICKYNOTE;
                         else if (pst_strincmp("IPM.Task", item->ascii_type, 8) == 0)
                             item->type = PST_TYPE_TASK;
+                        else if (pst_strincmp("IPM.Document", item->ascii_type, 12) == 0)
+                            item->type = PST_TYPE_DOCUMENT;
                         else
                             item->type = PST_TYPE_OTHER;
                         DEBUG_INFO(("Message class %s [%"PRIi32"] \n", item->ascii_type, item->type));
