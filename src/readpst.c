@@ -2105,7 +2105,6 @@ void write_journal(FILE* f_output, pst_item* item)
     pst_convert_utf8_null(item, &item->body);
 
     fprintf(f_output, "BEGIN:VJOURNAL\n");
-    fprintf(f_output, "DTSTAMP:%s\n",                     pst_rfc2445_datetime_format_now(sizeof(time_buffer), time_buffer));
     if (item->create_date)
         fprintf(f_output, "CREATED:%s\n",                 pst_rfc2445_datetime_format(item->create_date, sizeof(time_buffer), time_buffer));
     if (item->modify_date)
@@ -2134,7 +2133,6 @@ void write_appointment(FILE* f_output, pst_item* item)
     pst_convert_utf8_null(item, &appointment->location);
 
     fprintf(f_output, "UID:%#"PRIx64"\n", item->block_id);
-    fprintf(f_output, "DTSTAMP:%s\n",                     pst_rfc2445_datetime_format_now(sizeof(time_buffer), time_buffer));
     if (item->create_date)
         fprintf(f_output, "CREATED:%s\n",                 pst_rfc2445_datetime_format(item->create_date, sizeof(time_buffer), time_buffer));
     if (item->modify_date)
