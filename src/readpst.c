@@ -268,7 +268,8 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
         if (item->subject.str) {
             DEBUG_INFO(("item->subject = %s\n", item->subject.str));
         }
-        if (item->folder && item->file_as.str) {
+        int nid_type = d_ptr->d_id & 0x1f;
+        if ((nid_type == 0x2 || nid_type == 0x3 || nid_type == 0xB || nid_type == 0xC) && item->folder && item->file_as.str) {
             DEBUG_INFO(("Processing Folder \"%s\"\n", item->file_as.str));
             if (output_mode != OUTPUT_QUIET) {
                 pst_debug_lock();
