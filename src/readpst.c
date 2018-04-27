@@ -22,13 +22,14 @@ struct file_ll {
     char *dname;
     FILE * output[PST_TYPE_MAX];
     int32_t stored_count;
+    int32_t found_count;
     int32_t item_count;
     int32_t skip_count;
 };
 
 int       grim_reaper();
 pid_t     try_fork(char* folder);
-void      process(pst_item *outeritem, pst_desc_tree *d_ptr);
+int      process(pst_item *outeritem, pst_desc_tree *d_ptr);
 void      write_email_body(FILE *f, char *body);
 void      removeCR(char *c);
 void      usage();
@@ -237,13 +238,14 @@ pid_t try_fork(char *folder)
 }
 
 
-void process(pst_item *outeritem, pst_desc_tree *d_ptr)
+int process(pst_item *outeritem, pst_desc_tree *d_ptr)
 {
     struct file_ll ff;
     pst_item *item = NULL;
 
     DEBUG_ENT("process");
     create_enter_dir(&ff, outeritem);
+    int success = 1;
 
     for (; d_ptr; d_ptr = d_ptr->next) {
         DEBUG_INFO(("New item record\n"));
@@ -266,7 +268,6 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
         if (item->subject.str) {
             DEBUG_INFO(("item->subject = %s\n", item->subject.str));
         }
-
         if (item->folder && item->file_as.str) {
             DEBUG_INFO(("Processing Folder \"%s\"\n", item->file_as.str));
             if (output_mode != OUTPUT_QUIET) {
@@ -283,7 +284,7 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 if (child == 0) {
                     // we are the child process, or the original parent if no children were available
                     pid_t me = getpid();
-                    process(item, d_ptr->child);
+                    success &= process(item, d_ptr->child);
 #ifdef HAVE_FORK
 #ifdef HAVE_SEMAPHORE_H
                     if (me != parent) {
@@ -300,6 +301,7 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
 
         } else if (item->contact && (item->type == PST_TYPE_CONTACT)) {
+            ff.found_count++;
             DEBUG_INFO(("Processing Contact\n"));
             if (!(output_type_mode & OTMODE_CONTACT)) {
                 ff.skip_count++;
@@ -320,7 +322,8 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
 
-        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
+        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT) || item->type == PST_TYPE_STICKYNOTE || item->type == PST_TYPE_TASK)) {
+            ff.found_count++;
             DEBUG_INFO(("Processing Email\n"));
             if (!(output_type_mode & OTMODE_EMAIL)) {
                 ff.skip_count++;
@@ -364,6 +367,7 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
 
         } else if (item->journal && (item->type == PST_TYPE_JOURNAL)) {
+            ff.found_count++;
             DEBUG_INFO(("Processing Journal Entry\n"));
             if (!(output_type_mode & OTMODE_JOURNAL)) {
                 ff.skip_count++;
@@ -378,6 +382,7 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
 
         } else if (item->appointment && (item->type == PST_TYPE_APPOINTMENT)) {
+            ff.found_count++;
             DEBUG_INFO(("Processing Appointment Entry\n"));
             if (!(output_type_mode & OTMODE_APPOINTMENT)) {
                 ff.skip_count++;
@@ -396,6 +401,7 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
             ff.skip_count++;
             DEBUG_WARN(("item with message store content, type %i %s, skipping it\n", item->type, item->ascii_type));
         } else if (item->attach && item->type == PST_TYPE_DOCUMENT) {
+            ff.found_count++;
             // This always outputs documents as separate files (ignoring the MODE_ setting).
             // We could potentially write these docs as mbox entries in case of mbox output, but for us this is sufficient.
             pst_item_attach* attach;
@@ -418,8 +424,10 @@ void process(pst_item *outeritem, pst_desc_tree *d_ptr)
         }
         pst_freeItem(item);
     }
+    success &= ff.found_count == ff.stored_count;
     close_enter_dir(&ff);
     DEBUG_RET();
+    return success;
 }
 
 
@@ -674,7 +682,7 @@ int main(int argc, char* const* argv) {
         DIE(("Top of folders record not found. Cannot continue\n"));
     }
 
-    process(item, d_ptr->child);    // do the children of TOPF
+    int success = process(item, d_ptr->child);    // do the children of TOPF
     grim_reaper(1); // wait for all child processes
 
     pst_freeItem(item);
@@ -690,7 +698,7 @@ int main(int argc, char* const* argv) {
 #endif
 
     regfree(&meta_charset_pattern);
-    return 0;
+    return success ? 0 : 1;
 }
 
 
