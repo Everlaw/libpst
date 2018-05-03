@@ -322,7 +322,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
 
-        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT) || item->type == PST_TYPE_STICKYNOTE || item->type == PST_TYPE_TASK)) {
+        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
             ff.found_count++;
             DEBUG_INFO(("Processing Email\n"));
             if (!(output_type_mode & OTMODE_EMAIL)) {
