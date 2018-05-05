@@ -323,7 +323,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
 
-        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT) || item->type == PST_TYPE_STICKYNOTE || item->type == PST_TYPE_TASK)) {
+        } else if (item->email && (item->type == PST_TYPE_NOTE || item->type == PST_TYPE_SCHEDULE || item->type == PST_TYPE_REPORT || item->type == PST_TYPE_STICKYNOTE || item->type == PST_TYPE_TASK || item->type == PST_TYPE_POST || item->type == PST_TYPE_SHARE)) {
             ff.found_count++;
             DEBUG_INFO(("Processing Email\n"));
             if (!(output_type_mode & OTMODE_EMAIL)) {
@@ -425,7 +425,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
         }
         pst_freeItem(item);
     }
-    success &= ff.found_count == ff.stored_count;
+    success &= (! outeritem->folder || ff.found_count == ff.stored_count) && ff.skip_count == 0;
     close_enter_dir(&ff);
     DEBUG_RET();
     return success;
@@ -870,6 +870,8 @@ int32_t reduced_item_type(int32_t item_type) {
         case PST_TYPE_NOTE:
         case PST_TYPE_OTHER:
         case PST_TYPE_REPORT:
+        case PST_TYPE_POST:
+        case PST_TYPE_SHARE:
         default:
             reduced = PST_TYPE_NOTE;
             break;

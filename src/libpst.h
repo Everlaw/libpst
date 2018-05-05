@@ -26,6 +26,8 @@
 #define PST_TYPE_NOTE        1
 #define PST_TYPE_SCHEDULE    2
 #define PST_TYPE_DOCUMENT    3
+#define PST_TYPE_POST        4
+#define PST_TYPE_SHARE       5
 #define PST_TYPE_APPOINTMENT 8
 #define PST_TYPE_CONTACT     9
 #define PST_TYPE_JOURNAL    10
