@@ -392,7 +392,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
             else {
                 ff.item_count++;
                 if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_APPOINTMENT, d_ptr, (mode_EX) ? ".ics" : "", 1);
-                write_schedule_part_data(ff.output[PST_TYPE_APPOINTMENT], item, NULL, NULL);
+                write_schedule_part_data(ff.output[PST_TYPE_APPOINTMENT], item, item->email ? item->email->outlook_sender.str : NULL, NULL);
                 fprintf(ff.output[PST_TYPE_APPOINTMENT], "\n");
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
@@ -411,8 +411,18 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 pst_convert_utf8_null(item, &attach->filename1);
                 pst_convert_utf8_null(item, &attach->filename2);
                 pst_convert_utf8_null(item, &attach->mimetype);
-                DEBUG_INFO(("Attempting document extraction\n"));
-                if ((attach->data.data || attach->i_id) && acceptable_ext(attach)) {
+                if (attach->method == PST_ATTACH_EMBEDDED) {
+                    DEBUG_INFO(("have an embedded rfc822 message attachment\n"));
+                    ff.item_count++;
+                    if (attach->mimetype.str) {
+                        DEBUG_INFO(("which already has a mime-type of %s\n", attach->mimetype.str));
+                        free(attach->mimetype.str);
+                    }
+                    attach->mimetype.str = strdup(RFC822);
+                    attach->mimetype.is_utf8 = 1;
+                    mk_separate_file(&ff, PST_TYPE_DOCUMENT, d_ptr, "", 0);
+                    write_embedded_message(ff.name[PST_TYPE_DOCUMENT], attach, NULL, pst, save_rtf, NULL);
+                } else if ((attach->data.data || attach->i_id) && acceptable_ext(attach)) {
                     ff.item_count++;
                     mk_separate_file(&ff, PST_TYPE_DOCUMENT, d_ptr, "", 0);
                     write_separate_attachment(ff.name[PST_TYPE_DOCUMENT], attach, ++attach_num, &pstfile);
@@ -1169,8 +1179,10 @@ void write_embedded_message(FILE* f_output, pst_item_attach* attach, char *bound
         if (!item->email) {
             DEBUG_WARN(("write_embedded_message: pst_parse_item returned type %d, not an email message", item->type));
         } else {
-            fprintf(f_output, "\n--%s\n", boundary);
-            fprintf(f_output, "Content-Type: %s\n\n", attach->mimetype.str);
+            if (boundary) {
+                fprintf(f_output, "\n--%s\n", boundary);
+                fprintf(f_output, "Content-Type: %s\n\n", attach->mimetype.str);
+            }
             write_normal_email(f_output, "", item, MODE_NORMAL, 0, pf, save_rtf, 1, extra_mime_headers);
         }
         pst_freeItem(item);
