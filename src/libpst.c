@@ -2272,6 +2272,12 @@ static int pst_process(uint64_t block_id, pst_mapi_object *list, pst_item *item,
                             item->type = PST_TYPE_NOTE;
                         else if (pst_stricmp("IPM", item->ascii_type) == 0)
                             item->type = PST_TYPE_NOTE;
+                        else if (pst_stricmp("IPM.Outlook.Recall", item->ascii_type) == 0)
+                            item->type = PST_TYPE_NOTE;
+                        else if (pst_strincmp("IPM.Post", item->ascii_type, 8) == 0)
+                            item->type = PST_TYPE_POST;
+                        else if (pst_strincmp("IPM.Sharing", item->ascii_type, 11) == 0)
+                            item->type = PST_TYPE_SHARE;
                         else if (pst_strincmp("IPM.Contact", item->ascii_type, 11) == 0)
                             item->type = PST_TYPE_CONTACT;
                         else if (pst_strincmp("REPORT.IPM.Note", item->ascii_type, 15) == 0)

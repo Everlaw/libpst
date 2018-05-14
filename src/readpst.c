@@ -12,7 +12,7 @@
 #define OUTPUT_TEMPLATE "%s.%s"
 #define OUTPUT_KMAIL_DIR_TEMPLATE ".%s.directory"
 #define KMAIL_INDEX "../.%s.index"
-#define SEP_MAIL_FILE_TEMPLATE "%i%s"
+#define SEP_MAIL_FILE_TEMPLATE "%lx%s"
 
 // max size of the c_time char*. It will store the date of the email
 #define C_TIME_SIZE 500
@@ -40,7 +40,7 @@ void      mk_recurse_dir(char* dir);
 int       close_recurse_dir();
 void      mk_separate_dir(char *dir);
 int       close_separate_dir();
-void      mk_separate_file(struct file_ll *f, int32_t t, char *extension, int openit);
+void      mk_separate_file(struct file_ll *f, int32_t t, pst_desc_tree *d_ptr, char *extension, int openit);
 void      close_separate_file(struct file_ll *f);
 char*     my_stristr(char *haystack, char *needle);
 void      check_filename(char *fname);
@@ -268,7 +268,8 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
         if (item->subject.str) {
             DEBUG_INFO(("item->subject = %s\n", item->subject.str));
         }
-        if (item->folder && item->file_as.str) {
+        int nid_type = d_ptr->d_id & 0x1f;
+        if (nid_type == 0x2 && item->folder && item->file_as.str) {
             DEBUG_INFO(("Processing Folder \"%s\"\n", item->file_as.str));
             if (output_mode != OUTPUT_QUIET) {
                 pst_debug_lock();
@@ -309,7 +310,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
             else {
                 ff.item_count++;
-                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_CONTACT, (mode_EX) ? ".vcf" : "", 1);
+                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_CONTACT, d_ptr, (mode_EX) ? ".vcf" : "", 1);
                 if (contact_mode == CMODE_VCARD) {
                     pst_convert_utf8_null(item, &item->comment);
                     write_vcard(ff.output[PST_TYPE_CONTACT], item, item->contact, item->comment.str);
@@ -322,7 +323,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
 
-        } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
+        } else if (item->email && (item->type == PST_TYPE_NOTE || item->type == PST_TYPE_SCHEDULE || item->type == PST_TYPE_REPORT || item->type == PST_TYPE_STICKYNOTE || item->type == PST_TYPE_TASK || item->type == PST_TYPE_POST || item->type == PST_TYPE_SHARE)) {
             ff.found_count++;
             DEBUG_INFO(("Processing Email\n"));
             if (!(output_type_mode & OTMODE_EMAIL)) {
@@ -339,11 +340,11 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                     if (child == 0) {
                         // we are the child process, or the original parent if no children were available
                         pid_t me = getpid();
-                        mk_separate_file(&ff, PST_TYPE_NOTE, (mode_EX) ? ".eml" : "", 1);
+                        mk_separate_file(&ff, PST_TYPE_NOTE, d_ptr, (mode_EX) ? ".eml" : "", 1);
                         write_normal_email(ff.output[PST_TYPE_NOTE], ff.name[PST_TYPE_NOTE], item, mode, mode_MH, &pstfile, save_rtf_body, PST_TYPE_NOTE, &extra_mime_headers);
                         close_separate_file(&ff);
                         if (mode_MSG) {
-                            mk_separate_file(&ff, PST_TYPE_NOTE, ".msg", 0);
+                            mk_separate_file(&ff, PST_TYPE_NOTE, d_ptr, ".msg", 0);
                             write_msg_email(ff.name[PST_TYPE_NOTE], item, &pstfile);
                         }
 #ifdef HAVE_FORK
@@ -375,7 +376,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
             else {
                 ff.item_count++;
-                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_JOURNAL, (mode_EX) ? ".ics" : "", 1);
+                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_JOURNAL, d_ptr, (mode_EX) ? ".ics" : "", 1);
                 write_journal(ff.output[PST_TYPE_JOURNAL], item);
                 fprintf(ff.output[PST_TYPE_JOURNAL], "\n");
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
@@ -390,8 +391,8 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
             }
             else {
                 ff.item_count++;
-                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_APPOINTMENT, (mode_EX) ? ".ics" : "", 1);
-                write_schedule_part_data(ff.output[PST_TYPE_APPOINTMENT], item, NULL, NULL);
+                if (mode == MODE_SEPARATE) mk_separate_file(&ff, PST_TYPE_APPOINTMENT, d_ptr, (mode_EX) ? ".ics" : "", 1);
+                write_schedule_part_data(ff.output[PST_TYPE_APPOINTMENT], item, item->email ? item->email->outlook_sender.str : NULL, NULL);
                 fprintf(ff.output[PST_TYPE_APPOINTMENT], "\n");
                 if (mode == MODE_SEPARATE) close_separate_file(&ff);
             }
@@ -410,10 +411,20 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
                 pst_convert_utf8_null(item, &attach->filename1);
                 pst_convert_utf8_null(item, &attach->filename2);
                 pst_convert_utf8_null(item, &attach->mimetype);
-                DEBUG_INFO(("Attempting document extraction\n"));
-                if ((attach->data.data || attach->i_id) && acceptable_ext(attach)) {
+                if (attach->method == PST_ATTACH_EMBEDDED) {
+                    DEBUG_INFO(("have an embedded rfc822 message attachment\n"));
                     ff.item_count++;
-                    mk_separate_file(&ff, PST_TYPE_DOCUMENT, "", 0);
+                    if (attach->mimetype.str) {
+                        DEBUG_INFO(("which already has a mime-type of %s\n", attach->mimetype.str));
+                        free(attach->mimetype.str);
+                    }
+                    attach->mimetype.str = strdup(RFC822);
+                    attach->mimetype.is_utf8 = 1;
+                    mk_separate_file(&ff, PST_TYPE_DOCUMENT, d_ptr, "", 0);
+                    write_embedded_message(ff.name[PST_TYPE_DOCUMENT], attach, NULL, pst, save_rtf, NULL);
+                } else if ((attach->data.data || attach->i_id) && acceptable_ext(attach)) {
+                    ff.item_count++;
+                    mk_separate_file(&ff, PST_TYPE_DOCUMENT, d_ptr, "", 0);
                     write_separate_attachment(ff.name[PST_TYPE_DOCUMENT], attach, ++attach_num, &pstfile);
                 }
             }
@@ -424,7 +435,7 @@ int process(pst_item *outeritem, pst_desc_tree *d_ptr)
         }
         pst_freeItem(item);
     }
-    success &= ff.found_count == ff.stored_count;
+    success &= (! outeritem->folder || ff.found_count == ff.stored_count) && ff.skip_count == 0;
     close_enter_dir(&ff);
     DEBUG_RET();
     return success;
@@ -869,6 +880,8 @@ int32_t reduced_item_type(int32_t item_type) {
         case PST_TYPE_NOTE:
         case PST_TYPE_OTHER:
         case PST_TYPE_REPORT:
+        case PST_TYPE_POST:
+        case PST_TYPE_SHARE:
         default:
             reduced = PST_TYPE_NOTE;
             break;
@@ -918,7 +931,7 @@ void mk_separate_dir(char *dir) {
         if (y == 0)
             snprintf(dir_name, dirsize, "%s", dir);
         else
-            snprintf(dir_name, dirsize, "%s" SEP_MAIL_FILE_TEMPLATE, dir, y, ""); // enough for 9 digits allocated above
+            snprintf(dir_name, dirsize, "%s%i", dir, y); // enough for 9 digits allocated above
 
         check_filename(dir_name);
         DEBUG_INFO(("about to try creating %s\n", dir_name));
@@ -977,13 +990,10 @@ int close_separate_dir() {
 }
 
 
-void mk_separate_file(struct file_ll *f, int32_t t, char *extension, int openit) {
+void mk_separate_file(struct file_ll *f, int32_t t, pst_desc_tree *d_ptr, char *extension, int openit) {
     DEBUG_ENT("mk_separate_file");
     DEBUG_INFO(("opening next file to save email type %s\n", item_type_to_name(t)));
-    if (f->item_count > 999999999) { // bigger than nine 9's
-        DIE(("mk_separate_file: The number of emails in this folder has become too high to handle\n"));
-    }
-    sprintf(f->name[t], SEP_MAIL_FILE_TEMPLATE, f->item_count, extension);
+    sprintf(f->name[t], SEP_MAIL_FILE_TEMPLATE, d_ptr->d_id >> 5, extension);
     check_filename(f->name[t]);
     if (openit) {
         if (!(f->output[t] = fopen(f->name[t], "w"))) {
@@ -1169,8 +1179,10 @@ void write_embedded_message(FILE* f_output, pst_item_attach* attach, char *bound
         if (!item->email) {
             DEBUG_WARN(("write_embedded_message: pst_parse_item returned type %d, not an email message", item->type));
         } else {
-            fprintf(f_output, "\n--%s\n", boundary);
-            fprintf(f_output, "Content-Type: %s\n\n", attach->mimetype.str);
+            if (boundary) {
+                fprintf(f_output, "\n--%s\n", boundary);
+                fprintf(f_output, "Content-Type: %s\n\n", attach->mimetype.str);
+            }
             write_normal_email(f_output, "", item, MODE_NORMAL, 0, pf, save_rtf, 1, extra_mime_headers);
         }
         pst_freeItem(item);
